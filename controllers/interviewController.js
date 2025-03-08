@@ -20,7 +20,7 @@ exports.scheduleInterview = async (req, res) => {
     }
 
     const roomId = uuidv4();
-    const interviewLink = `http://localhost:3000/interview/${roomId}`;
+    const interviewLink = `https://auriter-front.vercel.app/interview/${roomId}`;
 
     let interviewQuestions = questions;
     if (!interviewQuestions) {

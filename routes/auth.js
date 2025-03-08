@@ -150,7 +150,7 @@ router.get('/google/callback',
   passport.authenticate('google', { session: false }),
   (req, res) => {
     const token = generateToken(req.user._id);
-    res.redirect(`http://localhost:3000/auth/callback?token=${token}`);
+    res.redirect(`https://auriter-front.vercel.app/auth/callback?token=${token}`);
   }
 );
 
