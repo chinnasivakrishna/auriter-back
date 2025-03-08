@@ -41,6 +41,29 @@ const generateToken = (id) => {
   });
 };
 
+// Token validation endpoint
+router.get('/validate', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      role: user.role
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
