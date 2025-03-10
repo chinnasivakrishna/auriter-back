@@ -12,7 +12,7 @@ const { protect } = require('../middleware/auth');
 passport.use(new GoogleStrategy({
     clientID: GOOGLE_CLIENT_ID,
     clientSecret: GOOGLE_CLIENT_SECRET,
-    callbackURL: "https://auriter-front.vercel.app/api/auth/google/callback"
+    callbackURL: "https://auriter-back.onrender.com/api/auth/google/callback"
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
