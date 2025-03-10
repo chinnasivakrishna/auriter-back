@@ -9,6 +9,7 @@ const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, JWT_SECRET } = require('../auth/
 const AdminProfile = require('../models/AdminProfile');
 const { protect } = require('../middleware/auth');
 // Passport Google Strategy
+// In auth.js, modify the Google Strategy
 passport.use(new GoogleStrategy({
   clientID: GOOGLE_CLIENT_ID,
   clientSecret: GOOGLE_CLIENT_SECRET,
@@ -16,7 +17,7 @@ passport.use(new GoogleStrategy({
 },
 async (accessToken, refreshToken, profile, done) => {
   try {
-    console.log("Google profile:", JSON.stringify(profile)); // Log the profile for debugging
+    console.log("Google profile:", JSON.stringify(profile));
     
     // Make sure we're getting email
     if (!profile.emails || profile.emails.length === 0) {
@@ -26,12 +27,17 @@ async (accessToken, refreshToken, profile, done) => {
     let user = await User.findOne({ googleId: profile.id });
     
     if (!user) {
-      user = await User.create({
+      // Create user without role - we'll require role selection after auth
+      user = new User({
         googleId: profile.id,
         name: profile.displayName || 'Google User',
         email: profile.emails[0].value,
-        password: 'googleAuth' // You might want to handle this differently
+        password: 'googleAuth', // You might want to handle this differently
+        role: 'pendingSelection' // Add a temporary role to pass validation
       });
+      
+      // Save the user
+      await user.save();
     }
     
     return done(null, user);
@@ -57,10 +63,10 @@ passport.authenticate('google', {
 })
 );
 
-// Add this to your Google auth callback route in auth.js
+// In auth.js
 router.get('/google/callback',
   (req, res, next) => {
-    passport.authenticate('google', { session: false }, (err, user, info) => {
+    passport.authenticate('google', { session: false }, async (err, user, info) => {
       if (err) {
         console.error("Passport authentication error:", err);
         return res.status(500).json({ 
@@ -79,16 +85,17 @@ router.get('/google/callback',
       
       const token = generateToken(user._id);
       
-      // If the user doesn't have a role yet, redirect to role selection
-      if (!user.role) {
-        res.redirect(`https://auriter-front.vercel.app/auth/callback?token=${token}`);
+      // If the user role is pending selection or doesn't have a proper role yet
+      if (user.role === 'pendingSelection' || !['jobSeeker', 'recruiter'].includes(user.role)) {
+        // Redirect to role selection page with token
+        return res.redirect(`https://auriter-front.vercel.app/auth/callback?token=${token}&requiresRole=true`);
       } else {
-        // User already has a role, complete auth flow
-        res.redirect(`https://auriter-front.vercel.app/auth/callback?token=${token}&role=${user.role}`);
+        // User already has a valid role, complete auth flow
+        return res.redirect(`https://auriter-front.vercel.app/auth/callback?token=${token}&role=${user.role}`);
       }
     })(req, res, next);
   }
-  );
+);
 
 // Token validation endpoint
 router.get('/validate', protect, async (req, res) => {

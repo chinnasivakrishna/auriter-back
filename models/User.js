@@ -23,7 +23,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['jobSeeker', 'recruiter'],
+    enum: ['jobSeeker', 'recruiter', 'pendingSelection'],
     required: true,
   },
   googleId: {
