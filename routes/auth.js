@@ -10,36 +10,78 @@ const AdminProfile = require('../models/AdminProfile');
 const { protect } = require('../middleware/auth');
 // Passport Google Strategy
 passport.use(new GoogleStrategy({
-    clientID: GOOGLE_CLIENT_ID,
-    clientSecret: GOOGLE_CLIENT_SECRET,
-    callbackURL: "https://auriter-back.onrender.com/api/auth/google/callback"
-  },
-  async (accessToken, refreshToken, profile, done) => {
-    try {
-      let user = await User.findOne({ googleId: profile.id });
-      
-      if (!user) {
-        user = await User.create({
-          googleId: profile.id,
-          name: profile.displayName,
-          email: profile.emails[0].value,
-          password: 'googleAuth' // You might want to handle this differently
-        });
-      }
-      
-      return done(null, user);
-    } catch (error) {
-      return done(error, null);
+  clientID: GOOGLE_CLIENT_ID,
+  clientSecret: GOOGLE_CLIENT_SECRET,
+  callbackURL: "https://auriter-back.onrender.com/api/auth/google/callback"
+},
+async (accessToken, refreshToken, profile, done) => {
+  try {
+    console.log("Google profile:", JSON.stringify(profile)); // Log the profile for debugging
+    
+    // Make sure we're getting email
+    if (!profile.emails || profile.emails.length === 0) {
+      return done(new Error('No email found in Google profile'), null);
     }
+    
+    let user = await User.findOne({ googleId: profile.id });
+    
+    if (!user) {
+      user = await User.create({
+        googleId: profile.id,
+        name: profile.displayName || 'Google User',
+        email: profile.emails[0].value,
+        password: 'googleAuth' // You might want to handle this differently
+      });
+    }
+    
+    return done(null, user);
+  } catch (error) {
+    console.error("Google auth error:", error);
+    return done(error, null);
   }
+}
 ));
 
 // Helper function to generate JWT
 const generateToken = (id) => {
-  return jwt.sign({ id }, JWT_SECRET, {
-    expiresIn: '30d'
-  });
+return jwt.sign({ id }, JWT_SECRET, {
+  expiresIn: '30d'
+});
 };
+
+// Google OAuth routes
+router.get('/google',
+passport.authenticate('google', { 
+  scope: ['profile', 'email'],
+  session: false 
+})
+);
+
+router.get('/google/callback',
+(req, res, next) => {
+  passport.authenticate('google', { session: false }, (err, user, info) => {
+    if (err) {
+      console.error("Passport authentication error:", err);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Authentication error', 
+        error: err.message 
+      });
+    }
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Authentication failed' 
+      });
+    }
+    
+    const token = generateToken(user._id);
+    res.redirect(`https://auriter-front.vercel.app/auth/callback?token=${token}&role=${user.role || 'jobSeeker'}`);
+    
+  })(req, res, next);
+}
+);
 
 // Token validation endpoint
 router.get('/validate', protect, async (req, res) => {
@@ -164,18 +206,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Google OAuth routes
-router.get('/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-router.get('/google/callback',
-  passport.authenticate('google', { session: false }),
-  (req, res) => {
-    const token = generateToken(req.user._id);
-    res.redirect(`https://auriter-front.vercel.app/auth/callback?token=${token}`);
-  }
-);
 
 router.post('/get-token', protect, async (req, res) => {
   try {

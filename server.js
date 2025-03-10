@@ -19,6 +19,7 @@ const app = express();
 const server = http.createServer(app);
 const fs = require('fs');
 const path = require('path');
+const passport = require('passport'); // Make sure to import passport
 
 const uploadDir = path.join(__dirname, 'uploads');
 const tempDir = path.join(__dirname, 'temp');
@@ -39,6 +40,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+app.use(passport.initialize());
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
