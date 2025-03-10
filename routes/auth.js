@@ -57,31 +57,38 @@ passport.authenticate('google', {
 })
 );
 
+// Add this to your Google auth callback route in auth.js
 router.get('/google/callback',
-(req, res, next) => {
-  passport.authenticate('google', { session: false }, (err, user, info) => {
-    if (err) {
-      console.error("Passport authentication error:", err);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Authentication error', 
-        error: err.message 
-      });
-    }
-    
-    if (!user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Authentication failed' 
-      });
-    }
-    
-    const token = generateToken(user._id);
-    res.redirect(`https://auriter-front.vercel.app/auth/callback?token=${token}&role=${user.role || 'jobSeeker'}`);
-    
-  })(req, res, next);
-}
-);
+  (req, res, next) => {
+    passport.authenticate('google', { session: false }, (err, user, info) => {
+      if (err) {
+        console.error("Passport authentication error:", err);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Authentication error', 
+          error: err.message 
+        });
+      }
+      
+      if (!user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Authentication failed' 
+        });
+      }
+      
+      const token = generateToken(user._id);
+      
+      // If the user doesn't have a role yet, redirect to role selection
+      if (!user.role) {
+        res.redirect(`https://auriter-front.vercel.app/auth/callback?token=${token}`);
+      } else {
+        // User already has a role, complete auth flow
+        res.redirect(`https://auriter-front.vercel.app/auth/callback?token=${token}&role=${user.role}`);
+      }
+    })(req, res, next);
+  }
+  );
 
 // Token validation endpoint
 router.get('/validate', protect, async (req, res) => {
