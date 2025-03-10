@@ -1,5 +1,4 @@
-// controllers/jobController.js
-// controllers/jobApplicationController.js
+
 const JobApplication = require('../models/JobApplication');
 const Job = require('../models/Job');
 
