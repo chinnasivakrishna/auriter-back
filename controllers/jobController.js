@@ -58,7 +58,9 @@ exports.generateJobDetails = async (req, res) => {
     try {
       // Extract the JSON from the response
       const responseText = response.choices[0].message.content.trim();
+      console.log(generatedContent);
       generatedContent = JSON.parse(responseText);
+      console.log(responseText);
     } catch (parseError) {
       console.error("Error parsing OpenAI response:", parseError);
       return res.status(500).json({ message: 'Failed to parse AI response' });
