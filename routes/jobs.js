@@ -6,12 +6,16 @@ const {
   getRecruiterJobs, 
   updateJob, 
   deleteJob,
-  getJobById 
+  getJobById,
+  generateJobDetails
 } = require('../controllers/jobController');
 const { protect } = require('../middleware/auth');
 
 // Create a new job
 router.post('/', protect, createJob);
+
+// Generate job details with OpenAI
+router.post('/generate-details', protect, generateJobDetails);
 
 // Get all jobs (with filters)
 router.get('/', getJobs);

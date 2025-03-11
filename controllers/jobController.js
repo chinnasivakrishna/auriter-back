@@ -1,6 +1,75 @@
-
 const JobApplication = require('../models/JobApplication');
 const Job = require('../models/Job');
+const { OpenAI } = require('openai');
+
+// Initialize OpenAI with API key from environment variables
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+exports.generateJobDetails = async (req, res) => {
+  try {
+    const { title, company, type, location } = req.body;
+    
+    if (!title || !company || !type || !location) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Create a prompt for OpenAI
+    const prompt = `
+      Generate comprehensive details for a job posting with the following information:
+      Job Title: ${title}
+      Company: ${company}
+      Job Type: ${type}
+      Location: ${location}
+
+      Please provide the following in a JSON format:
+      1. A detailed job description (2-3 paragraphs)
+      2. 5-7 job requirements as an array of strings
+      3. 5-7 job responsibilities as an array of strings
+      4. 5-8 required skills as an array of strings
+      5. 3-5 benefits as an array of strings
+      6. Recommended experience range (min and max in years)
+      7. Suggested salary range (min and max in USD)
+
+      Return only valid JSON without code blocks or explanations.
+    `;
+
+    // Call OpenAI API
+    const response = await openai.chat.completions.create({
+      model: "gpt-4", // Use appropriate model
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional job description writer who specializes in creating comprehensive, accurate job listings. Return only valid JSON without markdown code blocks or explanations."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1500
+    });
+
+    // Parse the response to get the generated job details
+    let generatedContent;
+    try {
+      // Extract the JSON from the response
+      const responseText = response.choices[0].message.content.trim();
+      generatedContent = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error("Error parsing OpenAI response:", parseError);
+      return res.status(500).json({ message: 'Failed to parse AI response' });
+    }
+
+    // Send the generated content back to the client
+    res.json(generatedContent);
+  } catch (error) {
+    console.error("Error generating job details:", error);
+    res.status(500).json({ message: error.message || 'Failed to generate job details' });
+  }
+};
 
 exports.searchApplications = async (req, res) => {
   try {
@@ -112,6 +181,7 @@ exports.updateApplicationStatus = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 exports.createJob = async (req, res) => {
   try {
     const jobData = {
