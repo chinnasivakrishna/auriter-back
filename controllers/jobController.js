@@ -60,17 +60,29 @@ exports.generateJobDetails = async (req, res) => {
         }
       ],
       temperature: 0.7,
-      max_tokens: 1500,
-      response_format: { type: "json_object" } // Ensure JSON response format
+      max_tokens: 1500
+      // Removed the response_format parameter as it's not supported by this model
     });
 
     // Parse the response to get the generated job details
     let generatedContent;
-    console.log("OpenAI response:", response);
+    console.log("OpenAI response received");
     try {
       // Extract the JSON from the response
       const responseText = response.choices[0].message.content.trim();
-      generatedContent = JSON.parse(responseText);
+      console.log("Raw response text:", responseText);
+      
+      // Try to parse the JSON, handling potential markdown code blocks
+      let jsonText = responseText;
+      
+      // Remove markdown code block if present
+      if (jsonText.startsWith("```json")) {
+        jsonText = jsonText.replace(/```json\n/, "").replace(/\n```$/, "");
+      } else if (jsonText.startsWith("```")) {
+        jsonText = jsonText.replace(/```\n/, "").replace(/\n```$/, "");
+      }
+      
+      generatedContent = JSON.parse(jsonText);
       
       // Add fallbacks for any missing fields
       generatedContent = {
