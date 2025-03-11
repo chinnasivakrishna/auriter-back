@@ -32,6 +32,17 @@ exports.generateJobDetails = async (req, res) => {
       6. Recommended experience range (min and max in years)
       7. Suggested salary range (min and max in USD)
 
+      Format the response as a JSON object with these exact keys:
+      {
+        "description": "string",
+        "requirements": ["string"],
+        "responsibilities": ["string"],
+        "skills": ["string"],
+        "benefits": ["string"],
+        "experience": {"min": number, "max": number},
+        "salary": {"min": number, "max": number, "currency": "USD"}
+      }
+
       Return only valid JSON without code blocks or explanations.
     `;
 
@@ -41,7 +52,7 @@ exports.generateJobDetails = async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "You are a professional job description writer who specializes in creating comprehensive, accurate job listings. Return only valid JSON without markdown code blocks or explanations."
+          content: "You are a professional job description writer who specializes in creating comprehensive, accurate job listings. Return only valid JSON with the exact keys requested, without markdown code blocks or explanations."
         },
         {
           role: "user",
@@ -49,26 +60,27 @@ exports.generateJobDetails = async (req, res) => {
         }
       ],
       temperature: 0.7,
-      max_tokens: 1500
+      max_tokens: 1500,
+      response_format: { type: "json_object" } // Ensure JSON response format
     });
 
     // Parse the response to get the generated job details
     let generatedContent;
-    console.log(response)
+    console.log("OpenAI response:", response);
     try {
       // Extract the JSON from the response
       const responseText = response.choices[0].message.content.trim();
       generatedContent = JSON.parse(responseText);
       
-      // Map the response fields to match the expected frontend structure
+      // Add fallbacks for any missing fields
       generatedContent = {
-        description: generatedContent.JobDescription || "",
-        requirements: generatedContent.JobRequirements || [],
-        responsibilities: generatedContent.JobResponsibilities || [],
-        skills: generatedContent.RequiredSkills || [],
-        benefits: generatedContent.Benefits || [],
-        experience: generatedContent.ExperienceRange || { min: 0, max: 0 },
-        salary: generatedContent.SalaryRange || { min: 0, max: 0, currency: 'USD' }
+        description: generatedContent.description || "",
+        requirements: generatedContent.requirements || [],
+        responsibilities: generatedContent.responsibilities || [],
+        skills: generatedContent.skills || [],
+        benefits: generatedContent.benefits || [],
+        experience: generatedContent.experience || { min: 0, max: 0 },
+        salary: generatedContent.salary || { min: 0, max: 0, currency: 'USD' }
       };
       
       console.log("Processed content:", generatedContent);
@@ -85,6 +97,7 @@ exports.generateJobDetails = async (req, res) => {
   }
 };
 
+// Rest of the controller remains the same
 exports.searchApplications = async (req, res) => {
   try {
     const { searchTerm, status, jobType } = req.query;
