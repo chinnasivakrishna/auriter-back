@@ -58,9 +58,20 @@ exports.generateJobDetails = async (req, res) => {
     try {
       // Extract the JSON from the response
       const responseText = response.choices[0].message.content.trim();
-      console.log(generatedContent);
       generatedContent = JSON.parse(responseText);
-      console.log(responseText);
+      
+      // Map the response fields to match the expected frontend structure
+      generatedContent = {
+        description: generatedContent.JobDescription || "",
+        requirements: generatedContent.JobRequirements || [],
+        responsibilities: generatedContent.JobResponsibilities || [],
+        skills: generatedContent.RequiredSkills || [],
+        benefits: generatedContent.Benefits || [],
+        experience: generatedContent.ExperienceRange || { min: 0, max: 0 },
+        salary: generatedContent.SalaryRange || { min: 0, max: 0, currency: 'USD' }
+      };
+      
+      console.log("Processed content:", generatedContent);
     } catch (parseError) {
       console.error("Error parsing OpenAI response:", parseError);
       return res.status(500).json({ message: 'Failed to parse AI response' });
