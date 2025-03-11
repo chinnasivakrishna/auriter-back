@@ -54,6 +54,7 @@ exports.generateJobDetails = async (req, res) => {
 
     // Parse the response to get the generated job details
     let generatedContent;
+    console.log(response)
     try {
       // Extract the JSON from the response
       const responseText = response.choices[0].message.content.trim();
