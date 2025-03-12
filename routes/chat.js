@@ -6,10 +6,9 @@ const { LMNTStreamingClient } = require('../websocket/lmntStreaming');
 
 const fs = require('fs');
 const path = require('path');
-// Initialize NVIDIA AI (using OpenAI compatible client)
-const nvidiAI = new OpenAI({
-  apiKey: process.env.NVIDIA_API_KEY,
-  baseURL: 'https://integrate.api.nvidia.com/v1'
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 // Save recording endpoint
@@ -160,10 +159,10 @@ router.post('/message', async (req, res) => {
       // Add more language-specific system prompts as needed
     };
 
-    console.log('Starting NVIDIA AI request with model: deepseek-ai/deepseek-r1');
+    console.log('Starting OpenAI request with model: gpt-3.5-turbo');
     try {
-      const completion = await nvidiAI.chat.completions.create({
-        model: "deepseek-ai/deepseek-r1",
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemPrompts[language] || systemPrompts['en'] },
           { role: "user", content: message }
@@ -174,7 +173,7 @@ router.post('/message', async (req, res) => {
         stream: false
       });
 
-      console.log('NVIDIA AI response received');
+      console.log('OpenAI response received');
       const aiResponse = completion.choices[0].message.content;
 
       chat.messages.push({
@@ -192,11 +191,11 @@ router.post('/message', async (req, res) => {
         message: aiResponse,
         chatHistory: chat.messages
       });
-    } catch (nvidiError) {
-      console.error('NVIDIA API error:', nvidiError);
+    } catch (openaiError) {
+      console.error('OpenAI API error:', openaiError);
 
       // Handle rate limiting specifically
-      if (nvidiError.status === 429) {
+      if (openaiError.status === 429) {
         return res.status(429).json({
           success: false,
           message: 'Chat service temporarily unavailable. Please try again in a few minutes.',
@@ -289,11 +288,11 @@ router.post('/voice-message', async (req, res) => {
       language: language
     });
 
-    // Get NVIDIA AI completion with language-specific system prompt
-    console.log('Starting NVIDIA AI request with model: deepseek-ai/deepseek-r1');
+    // Get OpenAI completion with language-specific system prompt
+    console.log('Starting OpenAI request with model: gpt-3.5-turbo');
     try {
-      const completion = await nvidiAI.chat.completions.create({
-        model: "deepseek-ai/deepseek-r1",
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
         messages: [
           { 
             role: "system", 
@@ -310,7 +309,7 @@ router.post('/voice-message', async (req, res) => {
         stream: false
       });
 
-      console.log('NVIDIA AI response received');
+      console.log('OpenAI response received');
       const aiResponse = completion.choices[0].message.content;
 
       // Add AI response to chat history
@@ -346,11 +345,11 @@ router.post('/voice-message', async (req, res) => {
         audio: audioBuffer.toString('base64'),
         synthesisOptions: synthesisOptions
       });
-    } catch (nvidiError) {
-      console.error('NVIDIA API error:', nvidiError);
+    } catch (openaiError) {
+      console.error('OpenAI API error:', openaiError);
 
       // Handle rate limiting specifically
-      if (nvidiError.status === 429) {
+      if (openaiError.status === 429) {
         return res.status(429).json({
           success: false,
           message: 'Voice chat service temporarily unavailable. Please try again in a few minutes.',
@@ -433,21 +432,39 @@ router.post('/transcribe', async (req, res) => {
       mimetype: audioFile.mimetype
     });
     
-    // Use NVIDIA's compatible API for transcription
+    // Save the file temporarily to disk
+    const tempFilePath = path.join(__dirname, '../uploads/temp', `${Date.now()}_${audioFile.name}`);
+    const tempDir = path.dirname(tempFilePath);
+    
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    await audioFile.mv(tempFilePath);
+    
+    // Use OpenAI's API for transcription
     try {
-      console.log('Starting NVIDIA AI transcription request');
-      const transcription = await nvidiAI.audio.transcriptions.create({
-        file: audioFile.tempFilePath,
+      console.log('Starting OpenAI transcription request');
+      const transcription = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(tempFilePath),
         model: "whisper-1",
       });
 
+      // Clean up temp file
+      fs.unlinkSync(tempFilePath);
+
       console.log('Transcription completed successfully');
       res.json({ transcript: transcription.text });
-    } catch (nvidiError) {
-      console.error('NVIDIA API transcription error:', nvidiError);
+    } catch (openaiError) {
+      console.error('OpenAI API transcription error:', openaiError);
+
+      // Clean up temp file in case of error
+      if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
+      }
 
       // Handle rate limiting specifically
-      if (nvidiError.status === 429) {
+      if (openaiError.status === 429) {
         return res.status(429).json({
           success: false,
           message: 'Transcription service temporarily unavailable. Please try again in a few minutes.',
